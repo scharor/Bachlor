@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Bar Charts with D3.js</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        .bar {
+            fill: steelblue;
+        }
+
+        .bar:hover {
+            fill: orange;
+        }
+
+        .axis-label {
+            font: 12px sans-serif;
+        }
+
+        .title {
+            text-align: center;
+            font-size: 18px;
+            margin: 10px;
+        }
+
+        .chart-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+}
+
+.chart-row {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    margin-bottom: 20px; /* Add some space between the rows */
+}
+
+.chart {
+    width: 45%; /* Make each chart take up 45% of the row width */
+    height: 400px;
+}
+
+#chart1, #chart2, #chart3, #chart4 {
+    margin: 10px; /* Add some margin around each chart */
+}
+
+
+        .chart-title {
+            text-align: center;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .bar-bracket {
+            fill: darkgreen;
+        }
+
+        .bar-bracket:hover {
+            fill: darkred;
+        }
+
+        .data-container {
+            margin: 20px;
+            font-family: Arial, sans-serif;
+        }
+
+        .data-container h3 {
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        .data-item {
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .data-label {
+            font-weight: bold;
+        }
+
+        .data-value {
+            margin-left: 10px;
+        }
+        .axis-label {
+    font: 12px sans-serif;
+        }
+    .line {
+    fill: none;
+    stroke: steelblue;
+    stroke-width: 2px;
+}
+
+.line:hover {
+    stroke: orange;
+}
+
+
+    </style>
+</head>
+<body>
+
+    <div class="title">Dashboard of 3D Bar Charts</div>
+    <div class="data-container">
+        <h3>Transaction Statistics</h3>
+        <div id="data-display"></div>
+    </div>
+    <div class="chart-container">
+        <div class="chart-row">
+            <h3 class="chart-title">Failed Mints</h3>
+             <svg id="chart1" class="chart"></svg>
+             <h3 class="chart-title">Successful Mints</h3>
+             <svg id="chart2" class="chart"></svg>
+            <h3 class="chart-title">Profit by Fee Bracket</h3>
+        <svg id="chart3" class="chart"></svg>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <div class="chart-row">
+            <h3 class="chart-title">Profit every 5 min</h3>
+            <svg id="lineChart1" class="chart"></svg>
+            <div id="tooltip" style="position: absolute; display: none; background: lightsteelblue; padding: 5px; border-radius: 5px;"></div>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <div class="chart-row">
+            <h3 class="chart-title">SOL Over Time</h3>
+            <svg id="lineChartSol" class="chart"></svg>
+            <h3 class="chart-title">USDC Over Time</h3>
+            <svg id="lineChartUsdc" class="chart"></svg>
+            <h3 class="chart-title">WSOL Over Time</h3>
+            <svg id="lineChartWsol" class="chart"></svg>
+        </div>
+    </div>
+    
+    
+
+<script>
+    // Set the dimensions and margins for each chart
+    const margin1 = { top: 20, right: 10, bottom: 60, left: 120 },
+      width1 = 400 - margin1.left - margin1.right, // Adjusted width
+      height1 = 400 - margin1.top - margin1.bottom;
+
+const margin2 = { top: 20, right: 10, bottom: 60, left: 120 },
+      width2 = 400 - margin2.left - margin2.right,
+      height2 = 400 - margin2.top - margin2.bottom;
+
+const margin3 = { top: 20, right: 30, bottom: 40, left: 120 },
+      width3 = 400 - margin3.left - margin3.right,
+      height3 = 400 - margin3.top - margin3.bottom;
+
+    // Create SVGs for all three charts
+    const svg1 = d3.select("#chart1")
+        .attr("width", width1 + margin1.left + margin1.right)
+        .attr("height", height1 + margin1.top + margin1.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin1.left},${margin1.top})`);
+
+    const svg2 = d3.select("#chart2")
+        .attr("width", width2 + margin2.left + margin2.right)
+        .attr("height", height2 + margin2.top + margin2.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin2.left},${margin2.top})`);
+
+    const svg3 = d3.select("#chart3")
+        .attr("width", width3 + margin3.left + margin3.right)
+        .attr("height", height3 + margin3.top + margin3.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin3.left},${margin3.top})`);
+
+    // Initialize the Y axis (for mint names and fee brackets)
+    const y1 = d3.scaleBand().range([0, height1]).padding(0.2);
+    const y2 = d3.scaleBand().range([0, height2]).padding(0.2);
+    const y3 = d3.scaleBand().range([0, height3]).padding(0.3);
+
+    const yAxis1 = svg1.append("g").attr("class", "axis-label");
+    const yAxis2 = svg2.append("g").attr("class", "axis-label");
+    const yAxis3 = svg3.append("g").attr("class", "axis-label");
+
+    // Initialize the X axis (for counts and profits)
+    const x1 = d3.scaleLinear().range([0, width1]);
+    const x2 = d3.scaleLinear().range([0, width2]);
+    const x3 = d3.scaleLinear().range([0, width3]);
+
+    const xAxis1 = svg1.append("g")
+        .attr("transform", `translate(0,${height1})`)
+        .attr("class", "axis-label");
+        svg1.append("text")
+    .attr("class", "axis-label")
+    .attr("text-anchor", "middle")
+    .attr("x", width1 / 2)
+    .attr("y", height1 + margin1.bottom - 10)
+    .text("Count");
+
+    svg1.append("text")
+    .attr("class", "axis-label")
+    .attr("text-anchor", "middle")
+    .attr("x", -margin1.top / 2)
+    .attr("y", -margin1.left / 2)
+    .attr("transform", `translate(${-margin1.left / 2},${height1 / 2}) rotate(-90)`)
+    .text("Mint");
+
+
+
+    const xAxis2 = svg2.append("g")
+        .attr("transform", `translate(0,${height2})`)
+        .attr("class", "axis-label");
+
+        svg2.append("text")
+    .attr("class", "axis-label")
+    .attr("text-anchor", "middle")
+    .attr("x", width2 / 2)
+    .attr("y", height2 + margin2.bottom - 10)
+    .text("Count");
+
+    const xAxis3 = svg3.append("g")
+        .attr("transform", `translate(0,${height3})`)
+        .attr("class", "axis-label");
+
+        svg3.append("text")
+    .attr("class", "axis-label")
+    .attr("text-anchor", "middle")
+    .attr("x", width3 / 2)
+    .attr("y", height3 + margin3.bottom - 10)
+    .text("Profit (%)");
+
+    svg3.append("text")
+    .attr("class", "axis-label")
+    .attr("text-anchor", "middle")
+    .attr("x", -margin3.top / 2)
+    .attr("y", -margin3.left / 2)
+    .attr("transform", `translate(${-margin3.left / 2},${height3 / 2}) rotate(-90)`)
+    .text("Fee Bracket");
+
+    // Function to update the first chart
+    function updateChart1() {
+        d3.json("datamintsfailed.json").then(data => {
+            // Sort the data by count and take the top 10 entries
+            data = data.sort((a, b) => b.count - a.count).slice(0, 10);
+
+            // Update the Y axis domain
+            y1.domain(data.map(d => d.mint));
+            yAxis1.call(d3.axisLeft(y1));
+
+            // Update the X axis domain
+            x1.domain([0, d3.max(data, d => d.count)]);
+            xAxis1.transition().duration(1000)
+                .call(d3.axisBottom(x1).tickFormat(d3.format(".2s")));
+
+            
+
+            // Create the bars
+            const bars = svg1.selectAll(".bar").data(data);
+
+            bars.enter()
+                .append("rect")
+                .attr("class", "bar")
+                .attr("y", d => y1(d.mint))
+                .attr("height", y1.bandwidth())
+                .attr("x", x1(0))
+                .attr("width", 0)
+                .merge(bars)
+                .transition().duration(1000)
+                .attr("y", d => y1(d.mint))
+                .attr("height", y1.bandwidth())
+                .attr("x", x1(0))
+                .attr("width", d => x1(d.count));
+
+            bars.exit().remove();
+        });
+    }
+
+    // Function to update the second chart
+    function updateChart2() {
+        d3.json("datamintssucc.json").then(data => {
+            // Sort the data by count and take the top 10 entries
+            data = data.sort((a, b) => b.count - a.count).slice(0, 10);
+
+            // Update the Y axis domain
+            y2.domain(data.map(d => d.mint));
+            yAxis2.call(d3.axisLeft(y2));
+
+            // Update the X axis domain
+            x2.domain([0, d3.max(data, d => d.count)]);
+            xAxis2.transition().duration(1000).call(d3.axisBottom(x2).tickFormat(d3.format(".2s")));
+
+            // Create the bars
+            const bars = svg2.selectAll(".bar").data(data);
+
+            bars.enter()
+                .append("rect")
+                .attr("class", "bar")
+                .attr("y", d => y2(d.mint))
+                .attr("height", y2.bandwidth())
+                .attr("x", x2(0))
+                .attr("width", 0)
+                .merge(bars)
+                .transition().duration(1000)
+                .attr("y", d => y2(d.mint))
+                .attr("height", y2.bandwidth())
+                .attr("x", x2(0))
+                .attr("width", d => x2(d.count));
+
+            bars.exit().remove();
+        });
+    }
+
+    // Function to update the third chart (Profit by Fee Bracket - Percentage)
+    function updateChart3() {
+        d3.json("datafeebrackets.json").then(data => {
+            // Calculate the total profit
+            const totalProfit = d3.sum(data, d => d.count);
+
+            // Calculate the percentage for each bracket
+            data.forEach(d => {
+                d.percentage = (d.count / totalProfit) * 100;
+            });
+
+            // Update the Y axis domain with fee brackets
+            y3.domain(data.map(d => d.feeBracket));
+            yAxis3.call(d3.axisLeft(y3));
+
+            // Update the X axis domain with percentage values
+            x3.domain([0, 100]); // Since we're dealing with percentages, 0 to 100
+
+            xAxis3.transition().duration(1000).call(d3.axisBottom(x3));
+
+            // Create the bars
+            const bars = svg3.selectAll(".bar-bracket").data(data);
+
+            bars.enter()
+                .append("rect")
+                .attr("class", "bar-bracket")
+                .attr("y", d => y3(d.feeBracket))
+                .attr("height", y3.bandwidth())
+                .attr("x", x3(0))
+                .attr("width", 0)
+                .merge(bars)
+                .transition().duration(1000)
+                .attr("y", d => y3(d.feeBracket))
+                .attr("height", y3.bandwidth())
+                .attr("x", x3(0))
+                .attr("width", d => x3(d.percentage));
+
+            bars.exit().remove();
+        });
+    }
+
+    function updateDataDisplay() {
+        d3.json("datatxnumbersnotdiagramm.json").then(data => {
+            const display = d3.select("#data-display");
+            display.html(""); // Clear existing content
+
+            const keys = Object.keys(data[0]);
+            keys.forEach(key => {
+                display.append("div")
+                    .attr("class", "data-item")
+                    .html(`<span class="data-label">${key}:</span> <span class="data-value">${data[0][key]}</span>`);
+            });
+        });
+    }
+
+        // Set the dimensions and margins for each line chart
+        const marginLine = { top: 20, right: 30, bottom: 50, left: 60 },
+          widthLine = 400 - marginLine.left - marginLine.right,
+          heightLine = 300 - marginLine.top - marginLine.bottom;
+
+    // Create SVGs for the line charts
+    const svgLine1 = d3.select("#lineChart1")
+        .attr("width", widthLine + marginLine.left + marginLine.right)
+        .attr("height", heightLine + marginLine.top + marginLine.bottom)
+        .append("g")
+        .attr("transform", `translate(${marginLine.left},${marginLine.top})`);
+
+    const svgLine2 = d3.select("#lineChart2")
+        .attr("width", widthLine + marginLine.left + marginLine.right)
+        .attr("height", heightLine + marginLine.top + marginLine.bottom)
+        .append("g")
+        .attr("transform", `translate(${marginLine.left},${marginLine.top})`);
+
+    // Define the X and Y axes for the line charts
+    const xLine = d3.scaleTime().range([0, widthLine]);
+    const yLine = d3.scaleLinear().range([heightLine, 0]);
+
+    const xAxisLine = svgLine1.append("g")
+        .attr("transform", `translate(0,${heightLine})`);
+
+    const yAxisLine = svgLine1.append("g");
+
+    // Define the line generator
+    const line = d3.line()
+    .x(d => xLine(new Date(d.timestamp)))
+    .y(d => yLine(d.profit))
+    .curve(d3.curveBasis); // This makes the line smooth
+
+    // Function to update the line charts
+    function updateLineCharts() {
+    d3.json("datafiveminpro.json").then(data => {
+        // Update domains
+        xLine.domain(d3.extent(data, d => new Date(d.timestamp)));
+        yLine.domain([0, d3.max(data, d => d.profit)]);
+
+        // Add X and Y axis
+        xAxisLine.call(d3.axisBottom(xLine));
+        yAxisLine.call(d3.axisLeft(yLine));
+
+        // Add the line path (smoothed)
+        svgLine1.selectAll(".line").remove();
+        svgLine1.append("path")
+            .data([data])
+            .attr("class", "line")
+            .attr("d", line); // Already smoothed by d3.curveBasis
+
+        // Add circles at data points for tooltips
+        svgLine1.selectAll(".dot").remove(); // Remove old dots
+        svgLine1.selectAll(".dot")
+            .data(data)
+            .enter().append("circle") // Create a circle for each data point
+            .attr("class", "dot")
+            .attr("cx", d => xLine(new Date(d.timestamp)))
+            .attr("cy", d => yLine(d.profit))
+            .attr("r", 0)
+            .attr("fill", "steelblue")
+            .on("mouseover", function (event, d) {
+                d3.select("#tooltip")
+                    .style("display", "block")
+                    .html(`Time: ${new Date(d.timestamp).toLocaleString()}<br>Profit: ${d.profit.toFixed(2)}`)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+            })
+            .on("mouseout", function () {
+                d3.select("#tooltip").style("display", "none");
+            });
+    });
+}
+
+
+    // Set the dimensions and margins for the new line charts
+const marginChart = { top: 20, right: 30, bottom: 50, left: 60 },
+      widthChart = 400 - marginChart.left - marginChart.right,
+      heightChart = 300 - marginChart.top - marginChart.bottom;
+
+// Create SVGs for the new line charts
+const svgChartSol = d3.select("#lineChartSol")
+    .attr("width", widthChart + marginChart.left + marginChart.right)
+    .attr("height", heightChart + marginChart.top + marginChart.bottom)
+    .append("g")
+    .attr("transform", `translate(${marginChart.left},${marginChart.top})`);
+
+const svgChartUsdc = d3.select("#lineChartUsdc")
+    .attr("width", widthChart + marginChart.left + marginChart.right)
+    .attr("height", heightChart + marginChart.top + marginChart.bottom)
+    .append("g")
+    .attr("transform", `translate(${marginChart.left},${marginChart.top})`);
+
+const svgChartWsol = d3.select("#lineChartWsol")
+    .attr("width", widthChart + marginChart.left + marginChart.right)
+    .attr("height", heightChart + marginChart.top + marginChart.bottom)
+    .append("g")
+    .attr("transform", `translate(${marginChart.left},${marginChart.top})`);
+
+// Define the X and Y axes for the new line charts
+const xAxisScale = d3.scaleTime().range([0, widthChart]);
+
+const yAxisScaleSol = d3.scaleLinear().range([heightChart, 0]);
+const yAxisScaleUsdc = d3.scaleLinear().range([heightChart, 0]);
+const yAxisScaleWsol = d3.scaleLinear().range([heightChart, 0]);
+
+const xAxisGroupSol = svgChartSol.append("g")
+    .attr("transform", `translate(0,${heightChart})`);
+
+const yAxisGroupSol = svgChartSol.append("g");
+
+const xAxisGroupUsdc = svgChartUsdc.append("g")
+    .attr("transform", `translate(0,${heightChart})`);
+
+const yAxisGroupUsdc = svgChartUsdc.append("g");
+
+const xAxisGroupWsol = svgChartWsol.append("g")
+    .attr("transform", `translate(0,${heightChart})`);
+
+const yAxisGroupWsol = svgChartWsol.append("g");
+
+// Define the line generators for each chart
+const lineGeneratorSol = d3.line()
+    .x(d => xAxisScale(new Date(d.timestamp)))
+    .y(d => yAxisScaleSol(d.sol));
+
+const lineGeneratorUsdc = d3.line()
+    .x(d => xAxisScale(new Date(d.timestamp)))
+    .y(d => yAxisScaleUsdc(d.usdc));
+
+const lineGeneratorWsol = d3.line()
+    .x(d => xAxisScale(new Date(d.timestamp)))
+    .y(d => yAxisScaleWsol(d.wsol));
+
+// Function to update the SOL chart
+function updateChartSol() {
+    d3.json("account_history.json").then(data => {
+        // Update domains
+        xAxisScale.domain(d3.extent(data, d => new Date(d.timestamp)));
+        yAxisScaleSol.domain([d3.min(data, d => d.sol), d3.max(data, d => d.sol)]);
+
+        // Add X and Y axis
+        xAxisGroupSol.call(d3.axisBottom(xAxisScale));
+        yAxisGroupSol.call(d3.axisLeft(yAxisScaleSol));
+
+        // Add the line path
+        svgChartSol.selectAll(".line").remove();
+        svgChartSol.append("path")
+            .data([data])
+            .attr("class", "line")
+            .attr("d", lineGeneratorSol);
+    });
+}
+
+// Function to update the USDC chart
+function updateChartUsdc() {
+    d3.json("account_history.json").then(data => {
+        // Update domains
+        xAxisScale.domain(d3.extent(data, d => new Date(d.timestamp)));
+        yAxisScaleUsdc.domain([d3.min(data, d => d.usdc), d3.max(data, d => d.usdc)]);
+
+        // Add X and Y axis
+        xAxisGroupUsdc.call(d3.axisBottom(xAxisScale));
+        yAxisGroupUsdc.call(d3.axisLeft(yAxisScaleUsdc));
+
+        // Add the line path
+        svgChartUsdc.selectAll(".line").remove();
+        svgChartUsdc.append("path")
+            .data([data])
+            .attr("class", "line")
+            .attr("d", lineGeneratorUsdc);
+    });
+}
+
+// Function to update the WSOL chart
+function updateChartWsol() {
+    d3.json("account_history.json").then(data => {
+        // Update domains
+        xAxisScale.domain(d3.extent(data, d => new Date(d.timestamp)));
+        yAxisScaleWsol.domain([d3.min(data, d => d.wsol), d3.max(data, d => d.wsol)]);
+
+        // Add X and Y axis
+        xAxisGroupWsol.call(d3.axisBottom(xAxisScale));
+        yAxisGroupWsol.call(d3.axisLeft(yAxisScaleWsol));
+
+        // Add the line path
+        svgChartWsol.selectAll(".line").remove();
+        svgChartWsol.append("path")
+            .data([data])
+            .attr("class", "line")
+            .attr("d", lineGeneratorWsol);
+    });
+}
+
+    
+
+    // Update all charts every 4 minutes
+    setInterval(updateChart1, 240000);
+    setInterval(updateChart2, 240000);
+    setInterval(updateChart3, 240000);
+    setInterval(updateDataDisplay, 240000);
+    setInterval(updateLineCharts, 240000);
+    setInterval(updateChartSol, 240000);
+    setInterval(updateChartUsdc, 240000);
+    setInterval(updateChartWsol, 240000);
+
+    updateChart1();
+    updateChart2();
+    updateChart3();
+    updateDataDisplay();
+    updateLineCharts();
+    updateChartSol();
+    updateChartUsdc();
+    updateChartWsol();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,17 @@
+#Filepath to storage file.
+Filepath: './data'
+
+#Pubkey of the wallet that should be tracked 
+WalletPubkey: 'FaoqbZtEnpfSpbSm86VLcwSKiqgWAPfnkPeaEWvFJ5ec'
+
+#USDC account of that wallet 
+UsdcAccountPubkey: 'BZDq15tfmaKUYriMmQmjfrJgPYcQPuaSe8vnxNG3u1Bg'
+
+#wSol account of that wallet 
+wSolAccountPubkey: 'ZdnWbzVrppigQ8vYCiHChd3YmKt4Dx6Ymu7Gh9xsvjd'
+
+#If false, it only writes the current PNL and timestamp to the file
+useConsolOutput: true
+
+#Opens a second window with a live graph displaying the pnl changes. It updates every 10s
+useGraph: false
